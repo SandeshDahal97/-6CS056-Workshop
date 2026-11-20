@@ -10,9 +10,7 @@ class StudentController extends Controller
 {
     public function index()
     {
-        $students = Student::all();
-
-        return view('students.index', compact('students'));
+        return view('students.list', ['students' => Student::all()]);
     }
 
     public function create()
@@ -22,67 +20,52 @@ class StudentController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|max:255|unique:students,email',
-            'phone' => 'required|string|max:30',
-            'address' => 'nullable|string',
-            'date_of_birth' => 'nullable|date|before_or_equal:today',
-        ]);
-
-        Student::create($validated);
+        $student = Student::create($request->validate($this->rules()));
 
         return redirect()
             ->route('students.index')
-            ->with('success', 'Student created successfully!');
+            ->with('success', "Student {$student->name} created successfully!");
     }
 
-    public function show($id)
+    public function show(Student $student)
     {
-        $student = Student::findOrFail($id);
-
-        return view('students.show', compact('student'));
+        return view('students.detail', ['student' => $student]);
     }
 
-    public function edit($id)
+    public function edit(Student $student)
     {
-        $student = Student::findOrFail($id);
-
-        return view('students.edit', compact('student'));
+        return view('students.edit', ['student' => $student]);
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, Student $student)
     {
-        $student = Student::findOrFail($id);
-
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => [
-                'required',
-                'email',
-                'max:255',
-                Rule::unique('students', 'email')->ignore($student->id),
-            ],
-            'phone' => 'required|string|max:30',
-            'address' => 'nullable|string',
-            'date_of_birth' => 'nullable|date|before_or_equal:today',
-        ]);
-
-        $student->update($validated);
+        $student->update($request->validate($this->rules($student)));
 
         return redirect()
-            ->route('students.show', $student->id)
+            ->route('students.show', $student)
             ->with('success', 'Student updated successfully!');
     }
 
-    public function destroy($id)
+    public function destroy(Student $student)
     {
-        $student = Student::findOrFail($id);
-
         $student->delete();
 
         return redirect()
             ->route('students.index')
             ->with('success', 'Student deleted successfully!');
+    }
+
+    private function rules(?Student $student = null): array
+    {
+        return [
+            'name'          => 'required|string|max:255',
+            'email'         => [
+                'required', 'email', 'max:255',
+                Rule::unique('students')->ignore($student?->id),
+            ],
+            'phone'         => 'required|string|max:20',
+            'address'       => 'nullable|string|max:500',
+            'date_of_birth' => 'nullable|date',
+        ];
     }
 }
